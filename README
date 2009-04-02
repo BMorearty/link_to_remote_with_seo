@@ -1,0 +1,71 @@
+LinkToRemoteWithSeo
+===================
+
+link_to_remote_with_seo adds optional SEO-friendliness to link_to_remote.  Pass the :seo => true option to
+link_to_remote when you want GoogleBot and other search engines to follow your links.  In addition to setting
+onclick, it also sets html_options[:href] to the SAME URL that you passed in to options[:url].
+
+See the big honking warning at the bottom for an explanation of why this plugin doesn't just override the
+behavior of link_to_remote.
+
+Home page: http://bmorearty.wordpress.com/2009/04/02/link-to-remote-with-seo/
+
+
+Example
+=======
+
+The following example shows a "Next" link in paginated output.  (Plain vanilla without automated pagination.)
+Clicking the link in a browser results in an AJAX call (using POST) that retrieves just the "page" partial
+and inserts it into the "results" div on the page with a highlight visual effect.  When a search engine sees
+the link, however, it will send a GET request to the same URL and the entire page (not just the partial)
+will be sent in the response.
+
+Putting this in the view (home/index.html.erb):
+  <div id="results">
+    <%= render :partial => "page" -%>
+  </div>
+  <%= link_to_remote "Next",
+        { :update => "#results",
+          :url => { :action => "next_page" },
+          :complete => visual_effect(:highlight, "#results"),
+          :seo => true } %>
+
+Produces (pay attention to the href attrbute):
+  <div id="results">
+    <!-- first page of results shown here -->
+  </div>
+  <a href="/home/next_page"
+    onclick="new Ajax.Updater('#results', '/home/next_page',
+      {asynchronous:true, evalScripts:true,
+       onComplete:function(request){new Effect.Highlight(&quot;#results&quot;,{});}}); return false;">
+    Next
+  </a>
+
+In  the controller (home.rb), render just the partial if called in an XHR (AJAX) request:
+  def next_page
+    if request.xhr?
+      render :partial => "page"
+    else
+      # Render the entire page, including the "results" section.
+      render :action => "index"
+    end
+  end
+
+
+WARNING ABOUT INCORRECT USE OF THIS FUNCTION
+============================================
+
+Sorry but I have to yell for emphasis here.
+
+When Google crawls your site it will follow all links on a page in advance, even before the
+user clicks on them.  Adding :confirm => "Are you sure?" WILL NOT HELP because it generates JavaScript
+that Google doesn't execute.  So DO NOT USE :seo => true when linking to destructive links because they will go
+in the href attribute.  Instead, override html_options[:href] to link to an intermediate page with
+"Are you sure?" and a BUTTON (not a link.  The crawler will not click the link, so the data will not be deleted.
+See
+  http://jlaine.net/2005/8/25/using-rails-ajax-helpers-to-create-safe-state-changing-links
+and search the page for "request.post?" for an explanation and some sample code.
+
+
+
+Copyright (c) 2009 Brian Morearty, released under the MIT license
